@@ -39,8 +39,9 @@ const RULES = {
 
 // What each download button means
 const FORMATS = {
-  hd: { args: ["-f", "bv*+ba/b", "--merge-output-format", "mp4"], ext: "mp4" },
-  sd: { args: ["-f", "b[height<=480]/b", "--merge-output-format", "mp4"], ext: "mp4" },
+  // Prefer H.264 + AAC: plays on every phone (AV1/HEVC/VP9 often will not play in phone players)
+  hd: { args: ["-f", "bv*[vcodec^=avc1]+ba[acodec^=mp4a]/b[vcodec^=avc1][ext=mp4]/bv*+ba/b", "--merge-output-format", "mp4"], ext: "mp4" },
+  sd: { args: ["-f", "b[height<=480][vcodec^=avc1]/b[height<=480]/b", "--merge-output-format", "mp4"], ext: "mp4" },
   mp3: { args: ["-x", "--audio-format", "mp3"], ext: "mp3" },
 };
 const MIME = { mp4: "video/mp4", mp3: "audio/mpeg", webm: "video/webm", m4a: "audio/mp4" };
