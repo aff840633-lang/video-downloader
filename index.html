@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video Downloader – TikTok, Facebook & Instagram</title>
+<style>
+:root{--a:#5b3df5;--b:#c800ff;--card:#262d6b;--ink:#fff}
+*{box-sizing:border-box}
+body{margin:0;font-family:Roboto,system-ui,Arial,sans-serif;color:var(--ink);min-height:100vh;background:linear-gradient(135deg,var(--a),var(--b))}
+header{background:#fff;display:flex;align-items:center;justify-content:space-between;padding:10px 16px}
+.logo{display:flex;align-items:center;gap:8px;color:#1b1b3a;font-weight:700}
+.logo i{width:34px;height:34px;border-radius:8px;background:var(--a);display:grid;place-items:center;color:#fff;font-style:normal}
+main{max-width:640px;margin:0 auto;padding:28px 16px 60px;text-align:center}
+h1{font-size:2.3rem;line-height:1.15;margin:8px 0 22px}
+.tabs{display:flex;gap:8px;margin-bottom:14px}
+.tabs button{flex:1;padding:12px;border:2px solid #ffffff80;border-radius:12px;background:transparent;color:#fff;font-size:1rem;font-weight:600;cursor:pointer}
+.tabs button[aria-selected=true]{background:#fff;color:var(--a);border-color:#fff}
+.box{display:flex;background:linear-gradient(90deg,#d9d2fb,#f3d4fb);border:2px solid #fff;border-radius:14px;padding:6px;align-items:center}
+.box input{flex:1;min-width:0;border:0;background:transparent;font-size:1.05rem;padding:14px 10px;outline:0;color:#2a2060}
+.box input::placeholder{color:#8f86c8}
+.paste{border:0;background:#fff;color:var(--a);font-size:1rem;padding:12px 14px;cursor:pointer;border-radius:6px}
+.go{width:100%;margin-top:14px;padding:16px;border:2px solid #fff;border-radius:14px;font-size:1.25rem;color:#fff;cursor:pointer;background:linear-gradient(90deg,var(--b),var(--a))}
+.go:disabled{opacity:.6}
+.msg{margin-top:14px;font-weight:600;min-height:1.4em}
+.res{margin-top:18px;background:var(--card);border-radius:16px;overflow:hidden;text-align:left}
+.res img{width:100%;max-height:340px;object-fit:cover;display:block;background:#111}
+.res .in{padding:16px}
+.res h2{font-size:1.1rem;margin:0 0 4px}
+.res p{margin:0 0 14px;opacity:.8;font-size:.95rem;word-break:break-word}
+.dl{display:block;text-decoration:none;text-align:center;color:#fff;font-weight:600;padding:14px;border-radius:10px;margin-top:10px;background:#4f46e5}
+.dl.hd{background:linear-gradient(90deg,#7a2cf5,#c800ff)}
+.dl.mp3{background:#5b1d96}
+.note{margin-top:28px;font-size:.85rem;opacity:.85}
+.hidden{display:none}
+:focus-visible{outline:3px solid #ffe14d;outline-offset:2px}
+</style>
+</head>
+<body>
+<header><div class="logo"><i>⬇</i> VidSave</div></header>
+<main>
+  <h1 id="title">TikTok Video Downloader</h1>
+  <div class="tabs" role="tablist">
+    <button role="tab" id="t-tiktok" aria-selected="true">TikTok</button>
+    <button role="tab" id="t-facebook" aria-selected="false">Facebook</button>
+    <button role="tab" id="t-instagram" aria-selected="false">Instagram</button>
+  </div>
+  <div class="box">
+    <input id="url" type="url" inputmode="url" placeholder="Insert a link here" aria-label="Video link">
+    <button class="paste" id="paste" type="button">📋 Paste</button>
+  </div>
+  <button class="go" id="go" type="button">Download</button>
+  <div class="msg" id="msg" role="status"></div>
+  <div class="res hidden" id="res">
+    <img id="thumb" alt="">
+    <div class="in"><h2 id="rt"></h2><p id="ra"></p><div id="links"></div></div>
+  </div>
+  <p class="note">Download only videos you own or have permission to save.</p>
+</main>
+<script>
+/* ===== SETTINGS =====
+   API_BASE: leave "" when server.js serves this page (same site). Otherwise your backend address, e.g. "https://api.yoursite.com"
+   Backend must answer GET /api/tiktok?url=... and GET /api/facebook?url=... and GET /api/instagram?url=... with JSON:
+   { "title":"", "author":"", "thumbnail":"https://...",
+     "links":[ {"label":"Without watermark HD","url":"https://...","type":"hd"},
+               {"label":"Download MP3","url":"https://...","type":"mp3"} ] }
+*/
+const API_BASE = "";
+
+const $ = id => document.getElementById(id);
+let mode = "tiktok";
+const names = {tiktok:"TikTok", facebook:"Facebook", instagram:"Instagram"};
+const rules = {
+  tiktok:/^https?:\/\/([\w-]+\.)?(tiktok\.com)\//i,
+  facebook:/^https?:\/\/([\w-]+\.)?(facebook\.com|fb\.watch|fb\.com)\//i,
+  instagram:/^https?:\/\/([\w-]+\.)?(instagram\.com|instagr\.am)\//i
+};
+
+function setMode(m){
+  mode = m;
+  $("title").textContent = names[m] + " Video Downloader";
+  for (const k in names) $("t-"+k).setAttribute("aria-selected", k===m);
+  $("msg").textContent = ""; $("res").classList.add("hidden");
+}
+$("t-tiktok").onclick = () => setMode("tiktok");
+$("t-facebook").onclick = () => setMode("facebook");
+$("t-instagram").onclick = () => setMode("instagram");
+
+$("paste").onclick = async () => {
+  try { $("url").value = (await navigator.clipboard.readText()).trim(); }
+  catch(e){ $("msg").textContent = "Can’t read the clipboard. Long-press the field and paste the link."; }
+};
+
+$("go").onclick = async () => {
+  const url = $("url").value.trim(), msg = $("msg");
+  $("res").classList.add("hidden");
+  if (!url) { msg.textContent = "Paste a " + names[mode] + " link first."; return; }
+  if (!rules[mode].test(url)) { msg.textContent = "That doesn’t look like a " + names[mode] + " link."; return; }
+  $("go").disabled = true; msg.textContent = "Fetching video…";
+  try {
+    const r = await fetch(API_BASE + "/api/" + mode + "?url=" + encodeURIComponent(url));
+    if (!r.ok) { let m = ""; try { m = (await r.json()).error || ""; } catch(_) {} throw new Error(m); }
+    show(await r.json()); msg.textContent = "";
+  } catch(e){ msg.textContent = e.message || "Couldn’t fetch this video. Check the link is public and try again."; }
+  $("go").disabled = false;
+};
+
+function show(d){
+  $("thumb").referrerPolicy = "no-referrer"; $("thumb").src = d.thumbnail || ""; $("thumb").style.display = d.thumbnail ? "block" : "none";
+  $("rt").textContent = d.title || "Video";
+  $("ra").textContent = d.author || "";
+  const box = $("links"); box.innerHTML = "";
+  (d.links || []).forEach(l => {
+    const a = document.createElement("a");
+    a.className = "dl " + (l.type || ""); a.textContent = l.label;
+    a.href = (l.url.startsWith("/") ? API_BASE : "") + l.url; a.target = "_blank"; a.rel = "noopener"; a.download = "";
+    box.appendChild(a);
+  });
+  $("res").classList.remove("hidden");
+}
+</script>
+</body>
+</html>
