@@ -31,6 +31,9 @@ h1{font-size:2.3rem;line-height:1.15;margin:8px 0 22px}
 .dl{display:block;text-decoration:none;text-align:center;color:#fff;font-weight:600;padding:14px;border-radius:10px;margin-top:10px;background:#4f46e5}
 .dl.hd{background:linear-gradient(90deg,#7a2cf5,#c800ff)}
 .dl.mp3{background:#5b1d96}
+.res video{width:100%;max-height:420px;display:block;background:#000}
+.res img{cursor:pointer}
+.dl.play{background:#0a8f5b;border:0;width:100%;font-size:1rem;cursor:pointer}
 .note{margin-top:28px;font-size:.85rem;opacity:.85}
 .hidden{display:none}
 :focus-visible{outline:3px solid #ffe14d;outline-offset:2px}
@@ -52,6 +55,7 @@ h1{font-size:2.3rem;line-height:1.15;margin:8px 0 22px}
   <button class="go" id="go" type="button">Download</button>
   <div class="msg" id="msg" role="status"></div>
   <div class="res hidden" id="res">
+    <video id="player" class="hidden" controls playsinline preload="none"></video>
     <img id="thumb" alt="">
     <div class="in"><h2 id="rt"></h2><p id="ra"></p><div id="links"></div></div>
   </div>
@@ -105,15 +109,39 @@ $("go").onclick = async () => {
   $("go").disabled = false;
 };
 
+function absUrl(u){ return (u.startsWith("/") ? API_BASE : "") + u; }
+
+// Play the video inside the page (uses the smaller SD file if there is one: loads faster)
+function playPreview(d){
+  const links = d.links || [];
+  const l = links.find(x => x.type === "sd") || links.find(x => x.type === "hd");
+  if (!l) return;
+  const v = $("player"), msg = $("msg");
+  v.src = absUrl(l.url) + (l.url.includes("?") ? "&" : "?") + "inline=1";
+  v.classList.remove("hidden"); $("thumb").style.display = "none";
+  msg.textContent = "Loading video… the first time can take up to a minute.";
+  v.onloadeddata = () => { msg.textContent = ""; };
+  v.onerror = () => { msg.textContent = "Can’t play it here. Please use a download button."; };
+  v.load(); v.play().catch(() => {});
+}
+
 function show(d){
+  const v = $("player"); v.pause(); v.removeAttribute("src"); v.load(); v.classList.add("hidden");
   $("thumb").referrerPolicy = "no-referrer"; $("thumb").src = d.thumbnail || ""; $("thumb").style.display = d.thumbnail ? "block" : "none";
   $("rt").textContent = d.title || "Video";
   $("ra").textContent = d.author || "";
   const box = $("links"); box.innerHTML = "";
+  if ((d.links || []).some(x => x.type === "sd" || x.type === "hd")) {
+    const p = document.createElement("button");
+    p.type = "button"; p.className = "dl play"; p.textContent = "▶ Play video";
+    p.onclick = () => playPreview(d);
+    box.appendChild(p);
+    $("thumb").onclick = () => playPreview(d);
+  }
   (d.links || []).forEach(l => {
     const a = document.createElement("a");
     a.className = "dl " + (l.type || ""); a.textContent = l.label;
-    a.href = (l.url.startsWith("/") ? API_BASE : "") + l.url; a.target = "_blank"; a.rel = "noopener"; a.download = "";
+    a.href = absUrl(l.url); a.target = "_blank"; a.rel = "noopener"; a.download = "";
     box.appendChild(a);
   });
   $("res").classList.remove("hidden");
