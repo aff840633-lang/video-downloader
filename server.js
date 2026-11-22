@@ -112,6 +112,12 @@ function checkUrl(mode, url) {
   return typeof url === "string" && url.length < 2000 && RULES[mode] && RULES[mode].test(url);
 }
 
+// number or undefined (so the page only shows what we really know)
+function num(x) {
+  const n = Number(x);
+  return x !== null && x !== undefined && x !== "" && Number.isFinite(n) ? n : undefined;
+}
+
 // ---- TikTok backup (used only when yt-dlp fails) ----
 async function tiktokFallback(url) {
   const r = await fetch(TIKWM + "?hd=1&url=" + encodeURIComponent(url), {
@@ -132,8 +138,14 @@ async function tiktokFallback(url) {
   if (!links.length) throw new Error("fallback: no links");
   return {
     title: String(d.title || "Video").slice(0, 150),
+    caption: String(d.title || "").slice(0, 300),
     author: String((d.author && (d.author.nickname || d.author.unique_id)) || ""),
+    avatar: abs((d.author && d.author.avatar) || ""),
     thumbnail: abs(d.cover || ""),
+    duration: num(d.duration),
+    likes: num(d.digg_count),
+    comments: num(d.comment_count),
+    shares: num(d.share_count),
     links,
   };
 }
@@ -183,8 +195,13 @@ async function handleInfo(mode, u, res) {
     ];
     sendJson(res, 200, {
       title: String(d.title || d.description || "Video").slice(0, 150),
+      caption: String(d.description || d.title || "").slice(0, 300),
       author: String(d.uploader || d.channel || d.creator || ""),
       thumbnail: d.thumbnail || "",
+      duration: num(d.duration),
+      likes: num(d.like_count),
+      comments: num(d.comment_count),
+      shares: num(d.repost_count),
       links,
     });
   } catch (e) {
