@@ -100,10 +100,21 @@ $("t-tiktok").onclick = () => setMode("tiktok");
 $("t-facebook").onclick = () => setMode("facebook");
 $("t-instagram").onclick = () => setMode("instagram");
 
+// Button shows "Paste" when the box is empty, and "Clear" when there is a link in it
+function syncBtn(){ $("paste").textContent = $("url").value.trim() ? "✖ Clear" : "📋 Paste"; }
+$("url").addEventListener("input", syncBtn);
 $("paste").onclick = async () => {
-  try { $("url").value = (await navigator.clipboard.readText()).trim(); }
+  const box = $("url");
+  if (box.value.trim()) {            // Clear
+    box.value = ""; $("msg").textContent = "";
+    $("player").pause(); $("res").classList.add("hidden");
+    syncBtn(); box.focus(); return;
+  }
+  try { box.value = (await navigator.clipboard.readText()).trim(); }   // Paste
   catch(e){ $("msg").textContent = "Can’t read the clipboard. Long-press the field and paste the link."; }
+  syncBtn();
 };
+syncBtn();
 
 $("go").onclick = async () => {
   const url = $("url").value.trim(), msg = $("msg");
