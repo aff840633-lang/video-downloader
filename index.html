@@ -31,10 +31,14 @@ h1{font-size:2.3rem;line-height:1.15;margin:8px 0 22px}
 .res .in{padding:16px}
 .res h2{font-size:1.15rem;margin:0 0 4px;word-break:break-word}
 .res p{margin:0 0 8px;opacity:.8;font-size:.95rem;word-break:break-word}
-.res .hint{font-size:.85rem;opacity:.65}
-#fb{color:#fff;font-weight:600;text-decoration:underline}
+.dl{display:flex;align-items:stretch;text-decoration:none;color:#fff;font-weight:600;border-radius:10px;margin-top:10px;background:#4f46e5;overflow:hidden;box-shadow:0 3px 0 #0003}
+.dl .ic{width:54px;flex:none;display:grid;place-items:center;background:#0003}
+.dl .tx{flex:1;text-align:center;padding:15px 10px}
+.dl.hd{background:linear-gradient(90deg,#7a2cf5,#c800ff)}
+.dl.sd{background:#4f46e5}
+.dl.mp3{background:#5b1d96}
 .note{margin-top:28px;font-size:.85rem;opacity:.85}
-.hidden{display:none}
+.hidden{display:none!important}
 :focus-visible{outline:3px solid #ffe14d;outline-offset:2px}
 </style>
 </head>
@@ -62,8 +66,7 @@ h1{font-size:2.3rem;line-height:1.15;margin:8px 0 22px}
     <div class="in">
       <h2 id="rt"></h2>
       <p id="ra"></p>
-      <p class="hint">To save: tap ⋮ on the video, then Download.</p>
-      <a id="fb" class="hidden" target="_blank" rel="noopener" download>Download file instead</a>
+      <div id="links"></div>
     </div>
   </div>
   <p class="note">Download only videos you own or have permission to save.</p>
@@ -118,32 +121,45 @@ $("go").onclick = async () => {
 
 function absUrl(u){ return (u.startsWith("/") ? API_BASE : "") + u; }
 
-// Show the thumbnail with a ▶ button on it. The video loads and plays only when the person taps it.
+const ICON_DL = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14"/></svg>';
+const ICON_MP3 = '<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M9 18V6l10-2v12h-2V8.3L11 9.5V18z"/><circle cx="7" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>';
+const LABELS = { hd: "Download HD (best quality)", sd: "Download Normal", mp3: "Download Music (MP3)" };
+
+// Thumbnail with a ▶ on it (tap = play in the page) + 3 download buttons: HD, Normal, Music
 function show(d){
   const links = d.links || [];
-  const l = links.find(x => x.type === "hd") || links.find(x => x.type === "sd");
-  const v = $("player"), msg = $("msg"), fb = $("fb"), th = $("thumb"), bp = $("bigplay");
+  const pl = links.find(x => x.type === "hd") || links.find(x => x.type === "sd");
+  const v = $("player"), msg = $("msg"), th = $("thumb"), bp = $("bigplay");
+  msg.textContent = "";
   $("rt").textContent = d.caption || d.title || "Video";
   $("ra").textContent = d.author || "";
-  fb.classList.add("hidden");
   v.pause(); v.removeAttribute("src"); v.classList.add("hidden");
   th.referrerPolicy = "no-referrer"; th.src = d.thumbnail || ""; th.classList.remove("hidden");
   bp.classList.remove("hidden");
   $("res").classList.remove("hidden");
-  if (!l) { bp.classList.add("hidden"); msg.textContent = "No video found for this link."; return; }
-  fb.href = absUrl(l.url);
+
   const start = () => {
-    v.src = absUrl(l.url) + (l.url.includes("?") ? "&" : "?") + "inline=1";
+    v.src = absUrl(pl.url) + (pl.url.includes("?") ? "&" : "?") + "inline=1";
     th.classList.add("hidden"); bp.classList.add("hidden"); v.classList.remove("hidden");
     msg.textContent = "Loading video… the first time can take up to a minute.";
     v.onloadeddata = () => { msg.textContent = ""; };
     v.onerror = () => {
-      msg.textContent = "Can’t play it here."; fb.classList.remove("hidden");
+      msg.textContent = "Can’t play it here. Please use a download button.";
       v.classList.add("hidden"); th.classList.remove("hidden"); bp.classList.remove("hidden");
     };
     v.load(); v.play().catch(() => {});
   };
-  bp.onclick = start; th.onclick = start;
+  if (pl) { bp.onclick = start; th.onclick = start; } else { bp.classList.add("hidden"); th.onclick = null; }
+
+  const box = $("links"); box.innerHTML = "";
+  links.forEach(l => {
+    const a = document.createElement("a");
+    a.className = "dl " + (l.type || "");
+    a.href = absUrl(l.url); a.target = "_blank"; a.rel = "noopener"; a.download = "";
+    a.innerHTML = '<span class="ic">' + (l.type === "mp3" ? ICON_MP3 : ICON_DL) + '</span><span class="tx"></span>';
+    a.querySelector(".tx").textContent = LABELS[l.type] || l.label;
+    box.appendChild(a);
+  });
 }
 </script>
 </body>
